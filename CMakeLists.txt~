@@ -28,7 +28,7 @@ cmake_minimum_required(VERSION 2.6)
 
 find_package(OpenCV REQUIRED)
 find_package(catkin REQUIRED)
-find_package(catkin REQUIRED sensor_msgs roscpp std_msgs)
+find_package(catkin REQUIRED sensor_msgs cv_bridge roscpp std_msgs image_transport)
 find_package(Boost REQUIRED COMPONENTS system)
 include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
 

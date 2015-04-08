@@ -25,7 +25,7 @@
 #include "Config.h"
 #include "ImAcq.h"
 #include "Gui.h"
-
+#include <ros/ros.h>
 using tld::Config;
 using tld::Gui;
 using tld::Settings;
@@ -34,6 +34,7 @@ int main(int argc, char **argv)
 {
 
     Main *main = new Main();
+    ros::init(argc, argv, "opentld");
     Config config;
     ImAcq *imAcq = imAcqAlloc();
     Gui *gui = new Gui();
