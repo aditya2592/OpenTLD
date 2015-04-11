@@ -24,18 +24,20 @@
  */
 
 #include "Main.h"
-
+#include "ros/ros.h"
 #include "Config.h"
 #include "ImAcq.h"
 #include "Gui.h"
 #include "TLDUtil.h"
 #include "Trajectory.h"
+#include "std_msgs/String.h"
 
 using namespace tld;
 using namespace cv;
 
-void Main::doWork()
+void Main::doWork(ros::NodeHandle n)
 {
+    ros::Publisher chatter_pub = n.advertise<std_msgs::String>("opentld_center", 1000);
 	Trajectory trajectory;
     IplImage *img = imAcqGetImg(imAcq);
     Mat grey(img->height, img->width, CV_8UC1);
@@ -170,10 +172,19 @@ void Main::doWork()
             {
                 CvScalar rectangleColor = (confident) ? blue : yellow;
                 cvRectangle(img, tld->currBB->tl(), tld->currBB->br(), rectangleColor, 8, 8, 0);
+                std_msgs::String msg;
+                std::stringstream ss;
+                CvPoint a=tld->currBB->tl(),b=tld->currBB->br();
+
+                ss<<"("<<a.x<<","<<a.y<<")"<<" "<<"("<<b.x<<","<<b.y<<")";
+                msg.data = ss.str();
+                chatter_pub.publish(msg);
+                ros::spinOnce();
 
 				if(showTrajectory)
 				{
 					CvPoint center = cvPoint(tld->currBB->x+tld->currBB->width/2, tld->currBB->y+tld->currBB->height/2);
+
 					cvLine(img, cvPoint(center.x-2, center.y-2), cvPoint(center.x+2, center.y+2), rectangleColor, 2);
 					cvLine(img, cvPoint(center.x-2, center.y+2), cvPoint(center.x+2, center.y-2), rectangleColor, 2);
 					trajectory.addPoint(center, rectangleColor);

@@ -26,7 +26,7 @@
 
 #ifndef MAIN_H_
 #define MAIN_H_
-
+#include "ros/ros.h"
 #include "TLD.h"
 #include "ImAcq.h"
 #include "Gui.h"
@@ -96,7 +96,7 @@ public:
         imAcqFree(imAcq);
     }
 
-    void doWork();
+    void doWork(ros::NodeHandle n);
 };
 
 #endif /* MAIN_H_ */

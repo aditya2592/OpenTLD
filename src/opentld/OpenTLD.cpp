@@ -35,6 +35,7 @@ int main(int argc, char **argv)
 
     Main *main = new Main();
     ros::init(argc, argv, "opentld");
+    ros::NodeHandle n;
     Config config;
     ImAcq *imAcq = imAcqAlloc();
     Gui *gui = new Gui();
@@ -58,7 +59,7 @@ int main(int argc, char **argv)
         gui->init();
     }
 
-    main->doWork();
+    main->doWork(n);
 
     delete main;
     main = NULL;
