@@ -59,9 +59,11 @@ public:
     const char *modelPath;
     const char *modelExportFile;
     int seed;
+    ros::NodeHandle n;
 
     Main()
     {
+
         tld = new tld::TLD();
         showOutput = 1;
         printResults = NULL;
@@ -96,7 +98,7 @@ public:
         imAcqFree(imAcq);
     }
 
-    void doWork(ros::NodeHandle n);
+    void doWork(IplImage *img, cv::Mat color, bool firstFrame);
 };
 
 #endif /* MAIN_H_ */

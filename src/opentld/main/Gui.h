@@ -23,6 +23,8 @@
 #include <string>
 
 #include <opencv/highgui.h>
+#include "iostream"
+#include "stdio.h"
 
 namespace tld
 {

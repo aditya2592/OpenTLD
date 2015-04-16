@@ -31,100 +31,112 @@
 #include "TLDUtil.h"
 #include "Trajectory.h"
 #include "std_msgs/String.h"
-
+#include "iostream"
+#include "stdio.h"
+using namespace std;
 using namespace tld;
 using namespace cv;
-
-void Main::doWork(ros::NodeHandle n)
+bool reuseFrameOnce;
+bool skipProcessingOnce;
+FILE *resultsFile;
+Trajectory trajectory;
+void Main::doWork(IplImage* img, Mat color, bool firstFrame)
 {
     ros::Publisher chatter_pub = n.advertise<std_msgs::String>("opentld_center", 1000);
-	Trajectory trajectory;
-    IplImage *img = imAcqGetImg(imAcq);
-    Mat grey(img->height, img->width, CV_8UC1);
-    cvtColor(cvarrToMat(img), grey, CV_BGR2GRAY);
+    Mat grey(color.rows, color.cols, CV_8UC1);
 
-    tld->detectorCascade->imgWidth = grey.cols;
-    tld->detectorCascade->imgHeight = grey.rows;
-    tld->detectorCascade->imgWidthStep = grey.step;
-
-	if(showTrajectory)
-	{
-		trajectory.init(trajectoryLength);
-	}
-
-    if(selectManually)
+    if(firstFrame)
     {
 
-        CvRect box;
+        //IplImage *img = imAcqGetImg(imAcq);
 
-        if(getBBFromUser(img, box, gui) == PROGRAM_EXIT)
+        //cvtColor(cvarrToMat(img), grey, CV_BGR2GRAY);
+        cvtColor(color,grey,CV_BGR2GRAY);
+
+        tld->detectorCascade->imgWidth = grey.cols;
+        tld->detectorCascade->imgHeight = grey.rows;
+        tld->detectorCascade->imgWidthStep = grey.step;
+
+        if(showTrajectory)
         {
-            return;
+            trajectory.init(trajectoryLength);
         }
 
-        if(initialBB == NULL)
+        if(selectManually)
         {
-            initialBB = new int[4];
+
+            CvRect box;
+
+            if(getBBFromUser(img, box, gui) == PROGRAM_EXIT)
+            {
+                return;
+            }
+
+            if(initialBB == NULL)
+            {
+                initialBB = new int[4];
+            }
+
+            initialBB[0] = box.x;
+            initialBB[1] = box.y;
+            initialBB[2] = box.width;
+            initialBB[3] = box.height;
         }
 
-        initialBB[0] = box.x;
-        initialBB[1] = box.y;
-        initialBB[2] = box.width;
-        initialBB[3] = box.height;
-    }
+        resultsFile = NULL;
 
-    FILE *resultsFile = NULL;
-
-    if(printResults != NULL)
-    {
-        resultsFile = fopen(printResults, "w");
-        if(!resultsFile)
+        if(printResults != NULL)
         {
-            fprintf(stderr, "Error: Unable to create results-file \"%s\"\n", printResults);
-            exit(-1);
+            resultsFile = fopen(printResults, "w");
+            if(!resultsFile)
+            {
+                fprintf(stderr, "Error: Unable to create results-file \"%s\"\n", printResults);
+                exit(-1);
+            }
         }
+
+        reuseFrameOnce = false;
+        skipProcessingOnce = false;
+
+        if(loadModel && modelPath != NULL)
+        {
+            tld->readFromFile(modelPath);
+            reuseFrameOnce = true;
+        }
+        else if(initialBB != NULL)
+
+        {
+            Rect bb = tldArrayToRect(initialBB);
+
+            printf("Starting at %d %d %d %d\n", bb.x, bb.y, bb.width, bb.height);
+
+            tld->selectObject(grey, &bb);
+            skipProcessingOnce = true;
+            reuseFrameOnce = true;
+        }
+
     }
-
-    bool reuseFrameOnce = false;
-    bool skipProcessingOnce = false;
-
-    if(loadModel && modelPath != NULL)
-    {
-        tld->readFromFile(modelPath);
-        reuseFrameOnce = true;
-    }
-    else if(initialBB != NULL)
-    {
-        Rect bb = tldArrayToRect(initialBB);
-
-        printf("Starting at %d %d %d %d\n", bb.x, bb.y, bb.width, bb.height);
-
-        tld->selectObject(grey, &bb);
-        skipProcessingOnce = true;
-        reuseFrameOnce = true;
-    }
-
-    while(imAcqHasMoreFrames(imAcq))
+    else
     {
         double tic = cvGetTickCount();
 
         if(!reuseFrameOnce)
         {
-            cvReleaseImage(&img);
-            img = imAcqGetImg(imAcq);
+//            cvReleaseImage(&img);
+//            img = imAcqGetImg(imAcq);
 
             if(img == NULL)
             {
                 printf("current image is NULL, assuming end of input.\n");
-                break;
+                return;
             }
 
-            cvtColor(cvarrToMat(img), grey, CV_BGR2GRAY);
+            cvtColor(color, grey, CV_BGR2GRAY);
         }
 
         if(!skipProcessingOnce)
         {
-            tld->processImage(cvarrToMat(img));
+            tld->processImage(color);
         }
         else
         {
@@ -135,11 +147,11 @@ void Main::doWork(ros::NodeHandle n)
         {
             if(tld->currBB != NULL)
             {
-                fprintf(resultsFile, "%d %.2d %.2d %.2d %.2d %f\n", imAcq->currentFrame - 1, tld->currBB->x, tld->currBB->y, tld->currBB->width, tld->currBB->height, tld->currConf);
+               // fprintf(resultsFile, "%d %.2d %.2d %.2d %.2d %f\n", imAcq->currentFrame - 1, tld->currBB->x, tld->currBB->y, tld->currBB->width, tld->currBB->height, tld->currConf);
             }
             else
             {
-                fprintf(resultsFile, "%d NaN NaN NaN NaN NaN\n", imAcq->currentFrame - 1);
+               // fprintf(resultsFile, "%d NaN NaN NaN NaN NaN\n", imAcq->currentFrame - 1);
             }
         }
 
@@ -162,7 +174,7 @@ void Main::doWork(ros::NodeHandle n)
                 strcpy(learningString, "Learning");
             }
 
-            sprintf(string, "#%d,Posterior %.2f; fps: %.2f, #numwindows:%d, %s", imAcq->currentFrame - 1, tld->currConf, fps, tld->detectorCascade->numWindows, learningString);
+            //sprintf(string, "#%d,Posterior %.2f; fps: %.2f, #numwindows:%d, %s", imAcq->currentFrame - 1, tld->currConf, fps, tld->detectorCascade->numWindows, learningString);
             CvScalar yellow = CV_RGB(255, 255, 0);
             CvScalar blue = CV_RGB(0, 0, 255);
             CvScalar black = CV_RGB(0, 0, 0);
@@ -181,24 +193,24 @@ void Main::doWork(ros::NodeHandle n)
                 chatter_pub.publish(msg);
                 ros::spinOnce();
 
-				if(showTrajectory)
-				{
-					CvPoint center = cvPoint(tld->currBB->x+tld->currBB->width/2, tld->currBB->y+tld->currBB->height/2);
+                if(showTrajectory)
+                {
+                    CvPoint center = cvPoint(tld->currBB->x+tld->currBB->width/2, tld->currBB->y+tld->currBB->height/2);
 
-					cvLine(img, cvPoint(center.x-2, center.y-2), cvPoint(center.x+2, center.y+2), rectangleColor, 2);
-					cvLine(img, cvPoint(center.x-2, center.y+2), cvPoint(center.x+2, center.y-2), rectangleColor, 2);
-					trajectory.addPoint(center, rectangleColor);
-				}
+                    cvLine(img, cvPoint(center.x-2, center.y-2), cvPoint(center.x+2, center.y+2), rectangleColor, 2);
+                    cvLine(img, cvPoint(center.x-2, center.y+2), cvPoint(center.x+2, center.y-2), rectangleColor, 2);
+                    trajectory.addPoint(center, rectangleColor);
+                }
             }
-			else if(showTrajectory)
-			{
-				trajectory.addPoint(cvPoint(-1, -1), cvScalar(-1, -1, -1));
-			}
+            else if(showTrajectory)
+            {
+                trajectory.addPoint(cvPoint(-1, -1), cvScalar(-1, -1, -1));
+            }
 
-			if(showTrajectory)
-			{
-				trajectory.drawTrajectory(img);
-			}
+            if(showTrajectory)
+            {
+                trajectory.drawTrajectory(img);
+            }
 
             CvFont font;
             cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, .5, .5, 0, 1, 8);
@@ -222,7 +234,7 @@ void Main::doWork(ros::NodeHandle n)
                 gui->showImage(img);
                 char key = gui->getKey();
 
-                if(key == 'q') break;
+                if(key == 'q') return;
 
                 if(key == 'b')
                 {
@@ -273,21 +285,23 @@ void Main::doWork(ros::NodeHandle n)
 
                     if(getBBFromUser(img, box, gui) == PROGRAM_EXIT)
                     {
-                        break;
+
+                        return;
                     }
 
                     Rect r = Rect(box);
 
                     tld->selectObject(grey, &r);
+
                 }
             }
 
             if(saveDir != NULL)
             {
                 char fileName[256];
-                sprintf(fileName, "%s/%.5d.png", saveDir, imAcq->currentFrame - 1);
+              //  sprintf(fileName, "%s/%.5d.png", saveDir, imAcq->currentFrame - 1);
 
-                cvSaveImage(fileName, img);
+               // cvSaveImage(fileName, img);
             }
         }
 
@@ -297,8 +311,14 @@ void Main::doWork(ros::NodeHandle n)
         }
     }
 
-    cvReleaseImage(&img);
-    img = NULL;
+
+//    while(imAcqHasMoreFrames(imAcq))
+//    {
+
+//    }
+
+//    cvReleaseImage(&img);
+//    img = NULL;
 
     if(exportModelAfterRun)
     {

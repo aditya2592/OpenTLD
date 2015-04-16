@@ -40,8 +40,9 @@ using tld::Config;
 using tld::Gui;
 using tld::Settings;
 using namespace cv;
- Main *main_tld;
+Main *main_tld;
 
+bool firstFrame=1;
 void callback(const sensor_msgs::ImageConstPtr& msg)
 {
 
@@ -60,21 +61,24 @@ void callback(const sensor_msgs::ImageConstPtr& msg)
     img2 = cvCreateImage(cvSize(img1.cols,img1.rows),8,3);
     IplImage ipltemp=img1;
     cvCopy(&ipltemp,img2);
-
-    cvNamedWindow("image", CV_WINDOW_AUTOSIZE);
-    cvShowImage("image", img2);
-    cvWaitKey();
-    cvDestroyWindow("image");
+    main_tld->doWork(img2,img1,::firstFrame);
+    if(::firstFrame)::firstFrame=0;
+//    cvNamedWindow("image", CV_WINDOW_AUTOSIZE);
+//    cvShowImage("image", img2);
+//    cvWaitKey();
+//    cvDestroyWindow("image");
 
 }
 int main(int argc, char **argv)
-{
+{ std::cout<<"okay";
+    ros::init(argc, argv, "opentld");
 
     main_tld = new Main();
-    ros::init(argc, argv, "opentld");
+
     ros::NodeHandle n;
 
     Config config;
+
     ImAcq *imAcq = imAcqAlloc();
     Gui *gui = new Gui();
 
@@ -98,6 +102,7 @@ int main(int argc, char **argv)
     }
 
    // main->doWork(n);
+    //firstFrame=1;
     ros::Subscriber sub = n.subscribe("ardrone/bottom/image_raw", 1000, callback);
 
     ros::spin();
