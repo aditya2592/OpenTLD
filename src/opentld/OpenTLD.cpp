@@ -94,7 +94,7 @@ int main(int argc, char **argv)
 
     srand(main_tld->seed);
 
-    imAcqInit(imAcq);
+    //imAcqInit(imAcq);
 
     if(main_tld->showOutput)
     {
@@ -103,7 +103,7 @@ int main(int argc, char **argv)
 
    // main->doWork(n);
     //firstFrame=1;
-    ros::Subscriber sub = n.subscribe("ardrone/bottom/image_raw", 1000, callback);
+    ros::Subscriber sub = n.subscribe("/ardrone/image_raw", 1000, callback);
 
     ros::spin();
     delete main_tld;
