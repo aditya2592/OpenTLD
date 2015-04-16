@@ -42,7 +42,7 @@ static void msleep(int milliseconds)
 ImAcq *imAcqAlloc()
 {
     ImAcq *imAcq = (ImAcq *)malloc(sizeof(ImAcq));
-    imAcq->method = IMACQ_CAM;
+    imAcq->method = IMACQ_CAM;        //Change
     imAcq->currentFrame = 1;
     imAcq->lastFrame = 0;
     imAcq->camNo = 0;
