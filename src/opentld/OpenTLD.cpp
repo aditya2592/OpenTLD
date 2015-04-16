@@ -40,7 +40,7 @@ using tld::Config;
 using tld::Gui;
 using tld::Settings;
 using namespace cv;
-
+ Main *main_tld;
 
 void callback(const sensor_msgs::ImageConstPtr& msg)
 {
@@ -70,42 +70,42 @@ void callback(const sensor_msgs::ImageConstPtr& msg)
 int main(int argc, char **argv)
 {
 
-   // Main *main = new Main();
+    main_tld = new Main();
     ros::init(argc, argv, "opentld");
     ros::NodeHandle n;
+
+    Config config;
+    ImAcq *imAcq = imAcqAlloc();
+    Gui *gui = new Gui();
+
+    main_tld->gui = gui;
+    main_tld->imAcq = imAcq;
+
+    if(config.init(argc, argv) == PROGRAM_EXIT)
+    {
+        return EXIT_FAILURE;
+    }
+
+    config.configure(main_tld);
+
+    srand(main_tld->seed);
+
+    imAcqInit(imAcq);
+
+    if(main_tld->showOutput)
+    {
+        gui->init();
+    }
+
+   // main->doWork(n);
     ros::Subscriber sub = n.subscribe("ardrone/bottom/image_raw", 1000, callback);
 
     ros::spin();
-//    Config config;
-//    ImAcq *imAcq = imAcqAlloc();
-//    Gui *gui = new Gui();
+    delete main_tld;
+    main_tld = NULL;
+    delete gui;
+    gui = NULL;
 
-//    main->gui = gui;
-//    main->imAcq = imAcq;
-
-//    if(config.init(argc, argv) == PROGRAM_EXIT)
-//    {
-//        return EXIT_FAILURE;
-//    }
-
-//    config.configure(main);
-
-//    srand(main->seed);
-
-//    imAcqInit(imAcq);
-
-//    if(main->showOutput)
-//    {
-//        gui->init();
-//    }
-
-//    main->doWork(n);
-
-//    delete main;
-//    main = NULL;
-//    delete gui;
-//    gui = NULL;
-
- //   return EXIT_SUCCESS;
-    return 1;
+    return EXIT_SUCCESS;
+   // return 1;
 }
